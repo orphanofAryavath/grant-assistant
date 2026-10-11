@@ -76,6 +76,8 @@ export const mappings = pgTable('mappings', {
   reviewStatus: reviewStatus('review_status').notNull().default('pending'),
   reviewedCoverage: coverage('reviewed_coverage'),
   reviewerNote: text('reviewer_note'),
+  reviewedEvidence: text('reviewed_evidence'),        // reviewer's own citation when correcting
+  reviewedEvidenceVerified: boolean('reviewed_evidence_verified'),
   reviewedAt: timestamp('reviewed_at'),
 });
 

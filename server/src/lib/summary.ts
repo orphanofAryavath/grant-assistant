@@ -12,6 +12,7 @@ export interface SummaryInput {
     code: string; text: string; level: 'mandatory' | 'recommended';
     aiCoverage: Coverage; reviewStatus: ReviewStatus; reviewedCoverage: Coverage | null;
     reviewerNote: string | null; evidenceQuote: string | null; evidenceVerified: boolean;
+    evidenceSource?: string | null; reviewedEvidence?: string | null; reviewedEvidenceVerified?: boolean | null;
   }[];
   documents: DocStatus[];
   questions: string[];
@@ -43,7 +44,15 @@ export function buildSummary(s: SummaryInput): string {
       const eff = effectiveCoverage(i);
       const status = eff ? label[eff] : `Awaiting review (AI suggested: ${label[i.aiCoverage]})`;
       out.push(`- **${i.code}** ${i.text} — ${status}${i.reviewStatus === 'corrected' ? ' (corrected by reviewer)' : ''}`);
-      if (i.evidenceQuote) out.push(`  - Evidence${i.evidenceVerified ? '' : ' (⚠ quote not found in application)'}: "${i.evidenceQuote}"`);
+      if (i.reviewedEvidence) {
+        out.push(`  - Reviewer evidence${i.reviewedEvidenceVerified ? '' : ' (⚠ not found in application)'}: "${i.reviewedEvidence}"`);
+      } else if (i.evidenceQuote) {
+        out.push(`  - Evidence${i.evidenceVerified ? '' : ' (⚠ quote not found in application)'}: "${i.evidenceQuote}"`);
+      } else if (i.evidenceSource && i.evidenceSource !== 'application') {
+        out.push(`  - Evidence: supporting document "${i.evidenceSource}"`);
+      } else if (eff && eff !== 'missing') {
+        out.push('  - ⚠ No citation supports this status.');
+      }
       if (i.reviewerNote) out.push(`  - Reviewer note: ${i.reviewerNote}`);
     }
   }

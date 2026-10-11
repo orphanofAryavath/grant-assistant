@@ -15,7 +15,7 @@ export interface CaseDetail { case: Case; versions: VersionMeta[]; latest: Versi
 export interface Requirement { id: string; code: string; text: string; category: string; level: Level; sourceQuote: string;
   sourceVerified: boolean; requiredDocument: string | null }
 export interface Mapping { id: string; aiCoverage: Coverage; rationale: string; evidenceQuote: string | null; evidenceVerified: boolean;
-  evidenceSource: string | null; reviewStatus: ReviewStatus; reviewedCoverage: Coverage | null; reviewerNote: string | null; reviewedAt: string | null }
+  evidenceSource: string | null; reviewStatus: ReviewStatus; reviewedCoverage: Coverage | null; reviewerNote: string | null; reviewedEvidence: string | null; reviewedEvidenceVerified: boolean | null; reviewedAt: string | null }
 export interface Finding { id: string; type: 'clarification' | 'unsupported_claim'; text: string; quote: string | null; quoteVerified: boolean;
   requirementCode: string | null; dismissed: boolean }
 export interface AiRun { id: string; step: string; model: string; promptChars: number; inputTokens: number | null; outputTokens: number | null;
@@ -68,7 +68,7 @@ export const api = {
   deleteSupporting: (id: string) => request<void>(`/supporting/${id}`, json('DELETE')),
   runAssessment: (caseId: string) => request<AssessmentView>(`/cases/${caseId}/assessments`, json('POST')),
   getAssessment: (id: string) => request<AssessmentView>(`/assessments/${id}`),
-  reviewMapping: (id: string, body: { action: 'confirm' | 'reject' | 'reset' | 'correct'; coverage?: Coverage; note?: string }) =>
+  reviewMapping: (id: string, body: { action: 'confirm' | 'reject' | 'reset' | 'correct'; coverage?: Coverage; note?: string; evidence?: string }) =>
     request<Mapping>(`/mappings/${id}`, json('PATCH', body)),
   setFindingDismissed: (id: string, dismissed: boolean) => request<Finding>(`/findings/${id}`, json('PATCH', { dismissed })),
   getSummary: (id: string) => request<{ markdown: string }>(`/assessments/${id}/summary`),

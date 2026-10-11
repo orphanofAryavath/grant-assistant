@@ -16,9 +16,9 @@ tested code — never by the model.
 |---|---|
 | Requirement extraction | LLM lists eligibility, content and submission requirements, tags each **mandatory** vs **recommended**, and quotes the guideline sentence it came from. |
 | Mapping + citations | LLM maps the application to every requirement as met / weak / ambiguous / missing, quoting the application text (or naming a supporting document) as evidence. |
-| Citation check | Every quote is checked against the source text in code (case/whitespace/dash-insensitive). Quotes that aren't really in the document are flagged ⚠ as possible fabrication. |
+| Citation check | Every quote is checked against the source text in code (case/whitespace/dash-insensitive). Quotes that aren't really in the document are flagged ⚠ as possible fabrication, and a met/weak/ambiguous judgement with no citation at all is flagged in the UI and in the summary. |
 | Gaps & questions | Clarification questions for weak/ambiguous/missing items, and claims in the application that no supplied evidence backs up (also quote-checked). |
-| Human review | Each mapping: **Confirm**, **Correct** (pick the real coverage + required note) or **Reject** (required note); **Undo** returns it to pending. Every decision is written to an append-only audit log. |
+| Human review | Each mapping: **Confirm**, **Correct** (pick the real coverage, a required note, and optionally the right evidence — itself checked against the application) or **Reject** (required note); **Undo** returns it to pending. Every decision is written to an append-only audit log. |
 | Deterministic completion | `server/src/lib/completion.ts`: only human-reviewed items count. Confirmed → AI value, corrected → reviewer value, rejected → missing, pending → not counted. Mandatory and recommended are reported separately. |
 | Supporting documents | Metadata only (name, type, notes, status provided/requested/missing). Required attachments named in the guideline are matched to them deterministically and listed as provided / requested / missing. |
 | Versioning | Every save of the guideline or application creates an immutable version with a SHA-256 content hash. Identical re-saves are a no-op. |
@@ -90,6 +90,12 @@ Vercel: the Vite build is served as static files and `api/index.ts` runs the Exp
 serverless function (`maxDuration` 120 s — an assessment takes ~30–70 s on the free Gemini tier).
 Postgres is Neon (serverless HTTP driver, no connection pool to manage). Environment variables
 are set in the Vercel project, never committed.
+
+## Out of scope (deliberately not built)
+
+External grant-database search, submitting applications, financial forecasting, OCR / PDF
+parsing, and writing or rewriting application text. The tool also never states whether an
+applicant *is* eligible or should be funded — only what the documents do and don't show.
 
 ## Scope decisions and limitations
 

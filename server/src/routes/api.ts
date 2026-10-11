@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db, schema } from '../db/client';
 import { contentHash } from '../lib/hash';
 import { buildSummary } from '../lib/summary';
+import { verifyQuote } from '../lib/citations';
 import { runAssessment } from '../ai/pipeline';
 import { loadAssessmentView, loadVersionsByIds } from './assessmentView';
 import { sampleCase } from '../samples';
@@ -139,24 +140,38 @@ api.patch('/mappings/:id', wrap(async (req, res) => {
   const body = z.discriminatedUnion('action', [
     z.object({ action: z.literal('confirm'), note: z.string().max(1000).optional() }),
     z.object({ action: z.literal('correct'), coverage: z.enum(['met', 'weak', 'ambiguous', 'missing']),
-      note: z.string().trim().min(1, 'Explain the correction').max(1000) }),
+      note: z.string().trim().min(1, 'Explain the correction').max(1000),
+      evidence: z.string().trim().max(2000).optional() }),
     z.object({ action: z.literal('reject'), note: z.string().trim().min(1, 'Explain why the mapping is wrong').max(1000) }),
     z.object({ action: z.literal('reset') }),
   ]).parse(req.body);
   const id = String(req.params.id);
   const [current] = await db.select().from(schema.mappings).where(eq(schema.mappings.id, id));
   if (!current) throw httpError(404, 'Mapping not found');
+  const [a] = await db.select({ caseId: schema.assessments.caseId, applicationVersionId: schema.assessments.applicationVersionId })
+    .from(schema.assessments).where(eq(schema.assessments.id, current.assessmentId));
+
+  // A reviewer's replacement citation is checked against the same application version the
+  // assessment ran on, exactly like the model's citations.
+  let reviewedEvidence: string | null = null;
+  let reviewedEvidenceVerified: boolean | null = null;
+  if (body.action === 'correct' && body.evidence) {
+    const [app] = await db.select({ content: schema.documentVersions.content }).from(schema.documentVersions)
+      .where(eq(schema.documentVersions.id, a.applicationVersionId));
+    reviewedEvidence = body.evidence;
+    reviewedEvidenceVerified = verifyQuote(body.evidence, app?.content ?? '');
+  }
   const update = body.action === 'reset'
-    ? { reviewStatus: 'pending' as const, reviewedCoverage: null, reviewerNote: null, reviewedAt: null }
+    ? { reviewStatus: 'pending' as const, reviewedCoverage: null, reviewerNote: null, reviewedEvidence: null,
+      reviewedEvidenceVerified: null, reviewedAt: null }
     : {
       reviewStatus: ({ confirm: 'confirmed', correct: 'corrected', reject: 'rejected' } as const)[body.action],
       reviewedCoverage: body.action === 'correct' ? body.coverage : null,
       reviewerNote: body.note ?? null,
+      reviewedEvidence, reviewedEvidenceVerified,
       reviewedAt: new Date(),
     };
   const [row] = await db.update(schema.mappings).set(update).where(eq(schema.mappings.id, id)).returning();
-  const [a] = await db.select({ caseId: schema.assessments.caseId }).from(schema.assessments)
-    .where(eq(schema.assessments.id, current.assessmentId));
   await audit(a.caseId, 'mapping_reviewed', { mappingId: id, from: current.reviewStatus, ...body });
   res.json(row);
 }));
@@ -178,6 +193,7 @@ api.get('/assessments/:id/summary', wrap(async (req, res) => {
     items: v.items.map(({ requirement: r, mapping: m }) => ({
       code: r.code, text: r.text, level: r.level, aiCoverage: m.aiCoverage, reviewStatus: m.reviewStatus,
       reviewedCoverage: m.reviewedCoverage, reviewerNote: m.reviewerNote, evidenceQuote: m.evidenceQuote, evidenceVerified: m.evidenceVerified,
+      evidenceSource: m.evidenceSource, reviewedEvidence: m.reviewedEvidence, reviewedEvidenceVerified: m.reviewedEvidenceVerified,
     })),
     documents: v.documents,
     questions: v.findings.filter((f) => f.type === 'clarification' && !f.dismissed).map((f) => f.text),

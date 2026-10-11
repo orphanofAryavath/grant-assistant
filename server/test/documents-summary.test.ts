@@ -44,4 +44,13 @@ describe('buildSummary', () => {
   it('warns when the assessment is stale', () => {
     expect(buildSummary({ ...base, stale: ['The draft application has changed.'] })).toMatch(/\*\*Stale:\*\*/);
   });
+  it('prefers reviewer evidence and flags a status with no citation', () => {
+    const extra = [
+      { ...items[0], code: 'R3', reviewStatus: 'corrected' as const, reviewedCoverage: 'met' as const, reviewedEvidence: 'Ten partner schools signed MoUs', reviewedEvidenceVerified: true },
+      { ...items[0], code: 'R4', evidenceQuote: null, evidenceVerified: false },
+    ];
+    const md = buildSummary({ ...base, items: extra });
+    expect(md).toMatch(/Reviewer evidence: "Ten partner schools signed MoUs"/);
+    expect(md).toMatch(/R4[\s\S]*No citation supports this status/);
+  });
 });

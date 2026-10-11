@@ -11,17 +11,18 @@ function ReviewRow({ requirement: r, mapping: m, onChange, onError }: {
   const [mode, setMode] = useState<'idle' | 'correct' | 'reject'>('idle');
   const [coverage, setCoverage] = useState<Coverage>(m.aiCoverage);
   const [note, setNote] = useState('');
+  const [evidence, setEvidence] = useState('');
   const [busy, setBusy] = useState(false);
   const [noteError, setNoteError] = useState('');
 
   async function send(body: Parameters<typeof api.reviewMapping>[1], msg: string) {
     setBusy(true); setNoteError('');
-    try { await api.reviewMapping(m.id, body); setMode('idle'); setNote(''); onChange(msg); }
+    try { await api.reviewMapping(m.id, body); setMode('idle'); setNote(''); setEvidence(''); onChange(msg); }
     catch (e) { onError(errorMessage(e)); } finally { setBusy(false); }
   }
   function submitNoted() {
     if (!note.trim()) return setNoteError(mode === 'correct' ? 'Explain the correction.' : 'Explain why the mapping is wrong.');
-    if (mode === 'correct') send({ action: 'correct', coverage, note: note.trim() }, `${r.code} corrected`);
+    if (mode === 'correct') send({ action: 'correct', coverage, note: note.trim(), evidence: evidence.trim() || undefined }, `${r.code} corrected`);
     else send({ action: 'reject', note: note.trim() }, `${r.code} rejected`);
   }
 
@@ -47,8 +48,15 @@ function ReviewRow({ requirement: r, mapping: m, onChange, onError }: {
         </p>
       ) : m.evidenceSource && m.evidenceSource !== 'application' ? (
         <p className="small">Evidence: supporting document “{m.evidenceSource}” {m.evidenceVerified ? <span className="ok">✓ listed as provided</span> : <span className="warn">⚠ not listed as provided</span>}</p>
-      ) : <p className="small muted">No evidence cited.</p>}
+      ) : m.aiCoverage === 'missing'
+        ? <p className="small muted">No evidence found in the application.</p>
+        : <p className="small warn">⚠ The AI marked this “{m.aiCoverage}” without citing any evidence — verify before confirming.</p>}
       {m.reviewerNote && <p className="small"><span className="muted">Reviewer note:</span> {m.reviewerNote}</p>}
+      {m.reviewedEvidence && (
+        <p className="quote small">
+          Reviewer evidence: “{m.reviewedEvidence}” {m.reviewedEvidenceVerified ? <span className="ok">✓ found in application</span> : <span className="warn">⚠ not found in the assessed application version</span>}
+        </p>
+      )}
 
       {mode === 'idle' ? (
         <div className="row">
@@ -71,6 +79,10 @@ function ReviewRow({ requirement: r, mapping: m, onChange, onError }: {
           )}
           <textarea rows={2} placeholder={mode === 'correct' ? 'Why is the AI wrong? (required)' : 'Why is this mapping wrong? (required)'}
             value={note} onChange={(e) => setNote(e.target.value)} aria-label="Reviewer note" />
+          {mode === 'correct' && (
+            <textarea rows={2} placeholder="Correct evidence — paste the exact text from the application (optional, checked against it)"
+              value={evidence} onChange={(e) => setEvidence(e.target.value)} aria-label="Corrected evidence" />
+          )}
           {noteError && <p className="field-error">{noteError}</p>}
           <div className="row">
             <button className="btn btn-sm btn-primary" disabled={busy} onClick={submitNoted}>{mode === 'correct' ? 'Save correction' : 'Reject mapping'}</button>
