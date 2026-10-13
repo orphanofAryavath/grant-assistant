@@ -52,8 +52,11 @@ A run that never records an outcome (e.g. the platform killed it) is marked fail
 
 Both calls use Gemini's JSON mode with a JSON Schema generated from the zod schemas, then the
 output is validated with zod anyway. Invalid output is retried once; every attempt is logged.
-Every call has a hard timeout (`GEMINI_TIMEOUT_MS`, default 45 s). A 429/503 is retried once with
-back-off; a timeout or repeated failure hands over to a lighter model (`GEMINI_FALLBACK_MODELS`).
+Every call has a hard timeout (primary 40 s, fallbacks 60 s). A 429/503 is retried once with
+back-off; a timeout or repeated failure hands over to the next model in `GEMINI_FALLBACK_MODELS`
+(default `gemini-3.1-flash-lite`, then `gemini-flash-lite-latest` — picked by benchmarking the
+extraction prompt on a day the flash models were returning 503). Only malformed model output
+triggers a second pass of a pipeline step; availability errors are not retried twice.
 Documents are wrapped in tags and the prompt tells the model to treat them as data, not
 instructions (basic prompt-injection hygiene).
 

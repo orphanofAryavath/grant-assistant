@@ -5,7 +5,7 @@ import { logger } from '../logger';
 import { verifyQuote } from '../lib/citations';
 import { getProvider } from './provider';
 
-import { parseModelJson } from './parse';
+import { parseModelJson, ModelOutputError } from './parse';
 import { extractionPrompt, mappingPrompt } from './prompts';
 import { ExtractionSchema, MappingSchema, extractionJsonSchema, mappingJsonSchema } from './schemas';
 
@@ -38,6 +38,9 @@ async function runStep<T extends z.ZodType>(
         durationMs, attempt, ok: false, error: message.slice(0, 1000),
       });
       logger.warn({ assessmentId, step, attempt, durationMs, err: message }, 'ai step failed');
+      // Only malformed output is worth asking again. Availability problems were already handled
+      // inside the provider (retries + model fallback); repeating that chain would just double the wait.
+      if (!(err instanceof ModelOutputError)) break;
     }
   }
   throw lastError;

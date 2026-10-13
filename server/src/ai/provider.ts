@@ -25,7 +25,9 @@ class GeminiProvider implements LlmProvider {
 
   async generateJson(prompt: string, jsonSchema: unknown, step: string): Promise<LlmResult> {
     let lastErr: unknown;
-    for (const model of this.models) {
+    for (const [i, model] of this.models.entries()) {
+      // The primary gets a shorter leash; fallbacks are the last resort and get more time.
+      const timeoutMs = i === 0 ? env.geminiTimeoutMs : env.geminiFallbackTimeoutMs;
       for (let attempt = 0; attempt < 2; attempt++) {
         const started = Date.now();
         try {
@@ -36,7 +38,7 @@ class GeminiProvider implements LlmProvider {
               responseMimeType: 'application/json',
               responseJsonSchema: jsonSchema,
               temperature: 0.1, // consistent extraction, not creativity
-              abortSignal: AbortSignal.timeout(env.geminiTimeoutMs),
+              abortSignal: AbortSignal.timeout(timeoutMs),
             },
           });
           return {
