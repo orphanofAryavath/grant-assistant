@@ -62,35 +62,58 @@ function SupportingDocs({ detail, reload, notify }: { detail: CaseDetail; reload
 
   return (
     <section className="card">
-      <h2>Supporting documents <span className="muted small">(metadata only)</span></h2>
-      {detail.supporting.length === 0 ? <Empty title="No supporting documents listed">Add what the applicant has attached or promised.</Empty> : (
-        <table className="table">
-          <thead><tr><th>Name</th><th>Type</th><th>Notes</th><th>Status</th><th /></tr></thead>
-          <tbody>
-            {detail.supporting.map((d) => (
-              <tr key={d.id}>
-                <td>{d.name}</td><td>{d.docType}</td><td className="muted">{d.description}</td>
-                <td>
-                  <select aria-label={`Status of ${d.name}`} value={d.status} onChange={(e) => act(() => api.updateSupporting(d.id, { status: e.target.value as SupportStatus }), 'Status updated')}>
-                    <option value="provided">provided</option><option value="requested">requested</option><option value="missing">missing</option>
-                  </select>
-                </td>
-                <td><button className="btn btn-ghost btn-sm" onClick={() => act(() => api.deleteSupporting(d.id), 'Removed')}>Remove</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="section-head">
+        <div>
+          <h2>Supporting documents <span className="optional-pill">optional</span></h2>
+          <p className="muted small">What the applicant has attached or promised. Only <strong>provided</strong> documents count as evidence; the AI and the document tracker both use this list.</p>
+        </div>
+        <span className="muted small">{detail.supporting.length} listed</span>
+      </div>
+
+      {detail.supporting.length === 0 ? <Empty title="No supporting documents listed">Add certificates, letters, accounts or CVs below.</Empty> : (
+        <ul className="doc-list">
+          {detail.supporting.map((d) => (
+            <li key={d.id} className="doc-item">
+              <span className="doc-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg>
+              </span>
+              <div className="doc-main">
+                <div className="doc-name">{d.name}</div>
+                <div className="doc-meta"><span className="badge">{d.docType}</span>{d.description && <span className="muted small">{d.description}</span>}</div>
+              </div>
+              <select className={`status-select st-${d.status}`} aria-label={`Status of ${d.name}`} value={d.status}
+                onChange={(e) => act(() => api.updateSupporting(d.id, { status: e.target.value as SupportStatus }), 'Status updated')}>
+                <option value="provided">Provided</option><option value="requested">Requested</option><option value="missing">Missing</option>
+              </select>
+              <button className="icon-btn" aria-label={`Remove ${d.name}`} title="Remove" onClick={() => act(() => api.deleteSupporting(d.id), 'Removed')}>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-      <form className="row wrap" onSubmit={add}>
-        <input aria-label="Document name" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input aria-label="Document type" placeholder="Type (e.g. budget, letter of support)" value={form.docType} onChange={(e) => setForm({ ...form, docType: e.target.value })} />
-        <input aria-label="Notes" placeholder="Notes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <select aria-label="Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as SupportStatus })}>
-          <option value="provided">provided</option><option value="requested">requested</option><option value="missing">missing</option>
-        </select>
-        <button className="btn" disabled={busy}>Add</button>
+
+      <form className="add-doc" onSubmit={add}>
+        <div className="add-doc-title">Add a document</div>
+        <div className="add-doc-grid">
+          <label className="field"><span>Name</span>
+            <input placeholder="e.g. Partner letter — City Library" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </label>
+          <label className="field"><span>Type</span>
+            <input placeholder="e.g. letter of support" value={form.docType} onChange={(e) => setForm({ ...form, docType: e.target.value })} />
+          </label>
+          <label className="field field-wide"><span>Notes <em>(optional)</em></span>
+            <input placeholder="Anything a reviewer should know" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </label>
+          <label className="field"><span>Status</span>
+            <select className={`status-select st-${form.status}`} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as SupportStatus })}>
+              <option value="provided">Provided</option><option value="requested">Requested</option><option value="missing">Missing</option>
+            </select>
+          </label>
+          <button className="btn btn-primary add-doc-btn" disabled={busy}>{busy ? 'Adding…' : 'Add document'}</button>
+        </div>
+        {error && <p className="field-error">{error}</p>}
       </form>
-      {error && <p className="field-error">{error}</p>}
     </section>
   );
 }

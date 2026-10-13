@@ -245,3 +245,43 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--ring); 
 .steps li.done .step-dot { background: var(--ok-soft); color: var(--ok); }
 .steps li.active .step-dot { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 131, 255, .45); } 50% { box-shadow: 0 0 0 7px rgba(124, 131, 255, 0); } }
+
+/* Supporting documents */
+.section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .9rem; }
+.section-head h2 { margin: 0 0 .2rem; display: flex; align-items: center; gap: .5rem; }
+.section-head p { margin: 0; max-width: 62ch; }
+.optional-pill { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: .15rem .5rem; border-radius: 999px; background: var(--primary-soft); color: var(--primary); }
+.doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.doc-item { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: .9rem; padding: .75rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; animation: fadeUp .25s ease both; }
+.doc-item:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.doc-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); }
+.doc-main { min-width: 0; }
+.doc-name { font-weight: 600; overflow-wrap: anywhere; }
+.doc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .2rem; }
+.status-select { font-size: .82rem; font-weight: 600; padding: .35rem 1.9rem .35rem .75rem; border-radius: 999px; appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .65rem center; }
+.status-select.st-provided { background-color: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+.status-select.st-requested { background-color: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.status-select.st-missing { background-color: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.status-select option { color: var(--text); background: var(--surface); }
+.icon-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; transition: background .2s ease, color .2s ease, border-color .2s ease; }
+.icon-btn:hover { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+.add-doc { margin-top: 1.1rem; padding: 1rem; border: 1.5px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); }
+.add-doc-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .7rem; }
+.add-doc-grid { display: grid; grid-template-columns: 1.2fr 1fr 1.5fr auto auto; gap: .7rem; align-items: end; }
+.field { display: grid; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.field em { font-weight: 400; font-style: normal; opacity: .8; }
+.field input, .field select { min-width: 0; width: 100%; font-weight: 400; }
+.field .status-select { font-weight: 600; padding-top: .55rem; padding-bottom: .55rem; }
+.add-doc-btn { height: 40px; }
+@media (max-width: 900px) {
+  .add-doc-grid { grid-template-columns: 1fr 1fr; }
+  .field-wide { grid-column: 1 / -1; }
+  .add-doc-btn { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .doc-item { grid-template-columns: auto 1fr auto; }
+  .doc-item .status-select { grid-column: 2 / 3; justify-self: start; }
+  .add-doc-grid { grid-template-columns: 1fr; }
+}
