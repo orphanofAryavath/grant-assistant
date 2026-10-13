@@ -4,10 +4,18 @@ import { calculateCompletion } from '../lib/completion';
 import { staleReasons } from '../lib/stale';
 import { trackSupportingDocuments } from '../lib/documents';
 
+const STUCK_AFTER_MS = 6 * 60_000;
+
 /** Everything the review screen needs for one assessment, assembled in one place. */
 export async function loadAssessmentView(assessmentId: string) {
-  const [assessment] = await db.select().from(schema.assessments).where(eq(schema.assessments.id, assessmentId));
+  let [assessment] = await db.select().from(schema.assessments).where(eq(schema.assessments.id, assessmentId));
   if (!assessment) return null;
+  if (assessment.status === 'running' && Date.now() - assessment.createdAt.getTime() > STUCK_AFTER_MS) {
+    // The background job was cut off (platform timeout / redeploy) before it could record an outcome.
+    [assessment] = await db.update(schema.assessments)
+      .set({ status: 'failed', step: null, error: 'The AI workflow did not finish in time. Please re-run.', finishedAt: new Date() })
+      .where(eq(schema.assessments.id, assessmentId)).returning();
+  }
   const [kase] = await db.select().from(schema.cases).where(eq(schema.cases.id, assessment.caseId));
 
   const [reqs, maps, finds, runs, supporting, versions] = await Promise.all([

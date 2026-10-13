@@ -8,7 +8,7 @@ export interface Case { id: string; name: string; createdAt: string }
 export interface VersionMeta { id: string; kind: DocKind; versionNo: number; title: string; contentHash: string; createdAt: string }
 export interface Version extends VersionMeta { content: string; caseId: string }
 export interface SupportingDoc { id: string; caseId: string; name: string; docType: string; description: string; status: SupportStatus }
-export interface Assessment { id: string; caseId: string; status: 'running' | 'ready' | 'failed'; model: string; error: string | null; createdAt: string;
+export interface Assessment { id: string; caseId: string; status: 'running' | 'ready' | 'failed'; step: string | null; model: string; error: string | null; createdAt: string; finishedAt: string | null;
   guidelineVersionId: string; applicationVersionId: string }
 export interface CaseDetail { case: Case; versions: VersionMeta[]; latest: Version[]; supporting: SupportingDoc[]; assessments: Assessment[] }
 

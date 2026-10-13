@@ -39,6 +39,11 @@ produced.
   by listing the models the key can actually use.
 - **No handling for 503 "high demand".** The first real run crashed on a 503. Added
   exponential back-off and a fallback model, then confirmed it recovered from three 503s in a row.
+- **Synchronous design didn't survive a slow day.** The first version waited for both LLM calls
+  inside one HTTP request. On 13 Oct the primary model took 171 s for one call and timed out on
+  another (a run of ~11 minutes), which would have broken on Vercel. Reworked it: hard per-call
+  timeouts with a fast fallback model, and the assessment now runs in the background with a live
+  progress panel the UI polls. Re-measured afterwards: ~2.5 minutes with the primary model down.
 - **Sections treated as attachments.** On the first real run the model listed "itemised budget"
   as a missing supporting document, though the budget is a section of the application. Tightened
   the extraction prompt so only separate attachments count.

@@ -9,22 +9,25 @@ export interface LlmProvider {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const isTransient = (err: unknown) => {
-  const status = (err as { status?: number }).status;
-  return status === 429 || status === 500 || status === 503 || status === 504;
+const statusOf = (err: unknown) => (err as { status?: number }).status;
+const isTimeout = (err: unknown) => {
+  const name = (err as { name?: string }).name;
+  return name === 'AbortError' || name === 'TimeoutError' || statusOf(err) === 504;
 };
+const isTransient = (err: unknown) => [429, 500, 503].includes(statusOf(err) ?? 0) || isTimeout(err);
 
 class GeminiProvider implements LlmProvider {
   private client = new GoogleGenAI({ apiKey: env.geminiApiKey });
   model = env.geminiModel;
-  // Free-tier models return 503 "high demand" fairly often, so fall back to a lighter model
-  // rather than failing the whole assessment.
+  // The free tier is often overloaded ("503 high demand") or very slow. Each call gets a hard
+  // timeout; a slow or overloaded model hands over to a lighter fallback instead of waiting.
   private models = [...new Set([env.geminiModel, ...env.geminiFallbackModels])];
 
-  async generateJson(prompt: string, jsonSchema: unknown): Promise<LlmResult> {
+  async generateJson(prompt: string, jsonSchema: unknown, step: string): Promise<LlmResult> {
     let lastErr: unknown;
     for (const model of this.models) {
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const started = Date.now();
         try {
           const res = await this.client.models.generateContent({
             model,
@@ -33,6 +36,7 @@ class GeminiProvider implements LlmProvider {
               responseMimeType: 'application/json',
               responseJsonSchema: jsonSchema,
               temperature: 0.1, // consistent extraction, not creativity
+              abortSignal: AbortSignal.timeout(env.geminiTimeoutMs),
             },
           });
           return {
@@ -44,8 +48,11 @@ class GeminiProvider implements LlmProvider {
         } catch (err) {
           lastErr = err;
           if (!isTransient(err)) throw err;
-          logger.warn({ model, attempt, status: (err as { status?: number }).status }, 'gemini transient error, retrying');
-          await sleep(1000 * 2 ** attempt);
+          const timedOut = isTimeout(err);
+          logger.warn({ step, model, attempt, timedOut, status: statusOf(err), elapsedMs: Date.now() - started },
+            'gemini call failed, retrying or falling back');
+          if (timedOut) break; // a slow model won't get faster on retry — move to the fallback
+          await sleep(1500 * (attempt + 1));
         }
       }
     }

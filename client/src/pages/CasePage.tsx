@@ -117,10 +117,11 @@ export default function CasePage() {
   async function run() {
     setRunning(true); setRunError('');
     try {
+      // The server starts the AI work in the background and returns at once; the assessment
+      // page shows live progress.
       const view = await api.runAssessment(caseId);
-      if (view.assessment.status === 'failed') { setRunError(`The AI step failed: ${view.assessment.error}`); load(); }
-      else navigate(`/assessments/${view.assessment.id}`);
-    } catch (e) { setRunError(errorMessage(e)); } finally { setRunning(false); }
+      navigate(`/assessments/${view.assessment.id}`);
+    } catch (e) { setRunError(errorMessage(e)); setRunning(false); }
   }
 
   if (error) return <ErrorBox message={error} onRetry={load} />;
@@ -140,7 +141,7 @@ export default function CasePage() {
           <button className="btn btn-primary" onClick={run} disabled={!canRun || running}>{running ? 'Running…' : 'Run assessment'}</button>
         </div>
         {!canRun && <p className="muted">Add both the guideline and the application to run an assessment.</p>}
-        {running && <Spinner label="Reading the guideline and checking the application — usually 20–60 seconds…" />}
+        {running && <Spinner label="Starting the assessment…" />}
         {runError && <ErrorBox message={runError} onRetry={run} />}
         {detail.assessments.length === 0 ? <Empty title="No assessments yet" /> : (
           <ul className="list">

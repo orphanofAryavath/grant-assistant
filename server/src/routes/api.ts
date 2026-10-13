@@ -5,7 +5,8 @@ import { db, schema } from '../db/client';
 import { contentHash } from '../lib/hash';
 import { buildSummary } from '../lib/summary';
 import { verifyQuote } from '../lib/citations';
-import { runAssessment } from '../ai/pipeline';
+import { waitUntil } from '@vercel/functions';
+import { startAssessment } from '../ai/pipeline';
 import { loadAssessmentView, loadVersionsByIds } from './assessmentView';
 import { sampleCase } from '../samples';
 
@@ -125,8 +126,11 @@ api.delete('/supporting/:id', wrap(async (req, res) => {
 }));
 
 api.post('/cases/:id/assessments', wrap(async (req, res) => {
-  const assessmentId = await runAssessment(String(req.params.id));
-  res.status(201).json(await loadAssessmentView(assessmentId));
+  const { assessmentId, done } = await startAssessment(String(req.params.id));
+  // On Vercel, waitUntil keeps the function alive after the response until the AI work ends.
+  // Locally it is a no-op and the promise simply keeps running in the Node process.
+  waitUntil(done);
+  res.status(202).json(await loadAssessmentView(assessmentId));
 }));
 
 api.get('/assessments/:id', wrap(async (req, res) => {

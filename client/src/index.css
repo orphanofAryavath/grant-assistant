@@ -234,3 +234,14 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--ring); 
 .card > .row.between:first-child { margin-bottom: 1rem; min-height: 38px; }
 .card > .row.between:first-child h2 { margin: 0; }
 .card > .row.between:first-child + p { margin-top: -.25rem; }
+
+/* Assessment progress */
+.progress-card { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+.steps { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .55rem; }
+.steps li { display: flex; align-items: center; gap: .7rem; color: var(--muted); transition: color .3s ease; }
+.steps li.active { color: var(--text); font-weight: 600; }
+.steps li.done { color: var(--ok); }
+.step-dot { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: .78rem; font-weight: 700; background: var(--chip); color: var(--muted); flex: none; transition: background .3s ease, color .3s ease; }
+.steps li.done .step-dot { background: var(--ok-soft); color: var(--ok); }
+.steps li.active .step-dot { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 131, 255, .45); } 50% { box-shadow: 0 0 0 7px rgba(124, 131, 255, 0); } }

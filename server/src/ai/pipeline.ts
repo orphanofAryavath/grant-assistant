@@ -4,6 +4,7 @@ import { db, schema } from '../db/client';
 import { logger } from '../logger';
 import { verifyQuote } from '../lib/citations';
 import { getProvider } from './provider';
+
 import { parseModelJson } from './parse';
 import { extractionPrompt, mappingPrompt } from './prompts';
 import { ExtractionSchema, MappingSchema, extractionJsonSchema, mappingJsonSchema } from './schemas';
@@ -42,7 +43,12 @@ async function runStep<T extends z.ZodType>(
   throw lastError;
 }
 
-export async function runAssessment(caseId: string) {
+/**
+ * Validates inputs and creates the assessment row synchronously, then returns the long-running
+ * AI work as a promise. The API responds immediately and the client polls for progress, so a
+ * slow model never holds an HTTP request open past the platform's limit.
+ */
+export async function startAssessment(caseId: string) {
   const versions = await db.select().from(schema.documentVersions)
     .where(eq(schema.documentVersions.caseId, caseId));
   const latest = (kind: 'guideline' | 'application') =>
@@ -61,8 +67,12 @@ export async function runAssessment(caseId: string) {
   }).returning();
   const log = logger.child({ assessmentId: assessment.id, caseId });
   log.info({ guidelineVersion: guideline.versionNo, applicationVersion: application.versionNo }, 'assessment started');
+  const setStep = (step: string) =>
+    db.update(schema.assessments).set({ step }).where(eq(schema.assessments.id, assessment.id));
 
+  const done = (async () => {
   try {
+    await setStep('extracting');
     // Step 1 — requirements from the guideline
     const extraction = await runStep(assessment.id, 'extract', extractionPrompt(guideline.content),
       extractionJsonSchema, ExtractionSchema);
@@ -78,12 +88,14 @@ export async function runAssessment(caseId: string) {
     const savedReqs = await db.insert(schema.requirements).values(reqRows).returning();
 
     // Step 2 — map the application against those requirements
+    await setStep('mapping');
     const mapping = await runStep(assessment.id, 'map', mappingPrompt({
       requirements: savedReqs.map((r) => ({ code: r.code, text: r.text, level: r.level })),
       application: application.content,
       supporting: supporting.map((s) => ({ name: s.name, docType: s.docType, description: s.description, status: s.status })),
     }), mappingJsonSchema, MappingSchema);
 
+    await setStep('saving');
     const byCode = new Map(mapping.mappings.map((m) => [m.requirementCode, m]));
     const providedDocs = new Set(supporting.filter((s) => s.status === 'provided').map((s) => s.name.toLowerCase()));
     const mapRows = savedReqs.map((r) => {
@@ -114,15 +126,18 @@ export async function runAssessment(caseId: string) {
     ];
     if (findingRows.length) await db.insert(schema.findings).values(findingRows);
 
-    await db.update(schema.assessments).set({ status: 'ready' }).where(eq(schema.assessments.id, assessment.id));
+    await db.update(schema.assessments).set({ status: 'ready', step: null, finishedAt: new Date() })
+      .where(eq(schema.assessments.id, assessment.id));
     const unverified = mapRows.filter((m) => m.evidenceQuote && !m.evidenceVerified).length;
     log.info({ requirements: savedReqs.length, findings: findingRows.length, unverifiedCitations: unverified }, 'assessment ready');
-    return assessment.id;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await db.update(schema.assessments).set({ status: 'failed', error: message.slice(0, 1000) })
-      .where(eq(schema.assessments.id, assessment.id));
+    await db.update(schema.assessments).set({ status: 'failed', step: null, error: message.slice(0, 1000), finishedAt: new Date() })
+      .where(eq(schema.assessments.id, assessment.id))
+      .catch((e) => log.error({ err: String(e) }, 'could not record failure'));
     log.error({ err: message }, 'assessment failed');
-    return assessment.id;
   }
+  })();
+
+  return { assessmentId: assessment.id, done };
 }

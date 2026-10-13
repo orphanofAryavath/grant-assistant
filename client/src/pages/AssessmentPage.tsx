@@ -5,6 +5,32 @@ import { CoverageBadge, Empty, ErrorBox, Modal, ReviewBadge, Spinner, Toast, fmt
 
 type Filter = 'all' | 'pending' | 'mandatory' | 'recommended' | 'gaps';
 
+const STEPS = [
+  { key: 'extracting', label: 'Extracting requirements from the guideline' },
+  { key: 'mapping', label: 'Mapping the application to each requirement' },
+  { key: 'saving', label: 'Verifying citations and saving' },
+];
+
+function Progress({ step, startedAt }: { step: string | null; startedAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const current = Math.max(0, STEPS.findIndex((s) => s.key === step));
+  const elapsed = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
+  return (
+    <section className="card progress-card" aria-live="polite">
+      <div className="row between"><h2>AI assessment in progress</h2><span className="muted small">{elapsed}s elapsed</span></div>
+      <ol className="steps">
+        {STEPS.map((s, i) => (
+          <li key={s.key} className={i < current ? 'done' : i === current ? 'active' : ''}>
+            <span className="step-dot">{i < current ? '✓' : i + 1}</span>{s.label}
+          </li>
+        ))}
+      </ol>
+      <p className="muted small">Usually 1–3 minutes. The free AI tier is sometimes busy — the app times out slow calls and falls back to a lighter model automatically. You can leave this page and come back.</p>
+    </section>
+  );
+}
+
 function ReviewRow({ requirement: r, mapping: m, onChange, onError }: {
   requirement: Requirement; mapping: Mapping; onChange: (msg: string) => void; onError: (msg: string) => void;
 }) {
@@ -111,6 +137,16 @@ export default function AssessmentPage() {
   }, [assessmentId]);
   useEffect(load, [load]);
 
+  // While the AI is working, poll for progress every 3 seconds.
+  const isRunning = view?.assessment.status === 'running';
+  useEffect(() => {
+    if (!isRunning) return;
+    const t = setInterval(() => {
+      api.getAssessment(assessmentId).then(setView).catch(() => { /* transient; keep polling */ });
+    }, 3000);
+    return () => clearInterval(t);
+  }, [isRunning, assessmentId]);
+
   const items = useMemo(() => (view?.items ?? []).filter(({ requirement: r, mapping: m }) => {
     switch (filter) {
       case 'pending': return m.reviewStatus === 'pending';
@@ -164,6 +200,7 @@ export default function AssessmentPage() {
         </div>
       )}
       {a.status === 'failed' && <ErrorBox message={`The AI workflow failed: ${a.error}`} onRetry={rerun} />}
+      {a.status === 'running' && <Progress step={a.step} startedAt={a.createdAt} />}
 
       {a.status === 'ready' && (
         <>

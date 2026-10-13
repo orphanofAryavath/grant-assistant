@@ -47,9 +47,11 @@ export const assessments = pgTable('assessments', {
   guidelineVersionId: uuid('guideline_version_id').notNull().references(() => documentVersions.id),
   applicationVersionId: uuid('application_version_id').notNull().references(() => documentVersions.id),
   status: assessmentStatus('status').notNull().default('running'),
+  step: text('step'), // progress while running: extracting | mapping | saving
   model: text('model').notNull(),
   error: text('error'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  finishedAt: timestamp('finished_at'),
 });
 
 export const requirements = pgTable('requirements', {

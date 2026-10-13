@@ -44,9 +44,16 @@ samples/         demo guideline, draft application (with deliberate gaps), suppo
 1. `extract` — guideline → requirements (code, text, category, level, source quote, required attachment).
 2. `map` — requirements + application + supporting-doc metadata → mappings, clarification questions, unsupported claims.
 
+The assessment runs **in the background**: `POST /api/cases/:id/assessments` validates the inputs,
+creates the assessment row and returns `202` straight away; the AI work continues (via Vercel's
+`waitUntil`) and records its progress (`extracting → mapping → saving`). The review page polls
+every 3 s and shows a live progress panel, so a slow model never holds an HTTP request open.
+A run that never records an outcome (e.g. the platform killed it) is marked failed after 6 minutes.
+
 Both calls use Gemini's JSON mode with a JSON Schema generated from the zod schemas, then the
 output is validated with zod anyway. Invalid output is retried once; every attempt is logged.
-Transient 429/503 errors back off and fall back to a lighter model (`GEMINI_FALLBACK_MODELS`).
+Every call has a hard timeout (`GEMINI_TIMEOUT_MS`, default 45 s). A 429/503 is retried once with
+back-off; a timeout or repeated failure hands over to a lighter model (`GEMINI_FALLBACK_MODELS`).
 Documents are wrapped in tags and the prompt tells the model to treat them as data, not
 instructions (basic prompt-injection hygiene).
 
@@ -87,7 +94,8 @@ the same validation as the real model's.
 ## Deployment
 
 Vercel: the Vite build is served as static files and `api/index.ts` runs the Express app as a
-serverless function (`maxDuration` 120 s — an assessment takes ~30–70 s on the free Gemini tier).
+serverless function. `maxDuration` is 300 s so the background assessment (`waitUntil`) has room —
+a run takes ~1–3 minutes on the free Gemini tier, longer when the primary model is overloaded.
 Postgres is Neon (serverless HTTP driver, no connection pool to manage). Environment variables
 are set in the Vercel project, never committed.
 
@@ -103,10 +111,11 @@ applicant *is* eligible or should be funded — only what the documents do and d
   PDF parsing or OCR. Supporting documents are metadata, not files.
 - **No authentication / multi-user.** It is a single-workspace demo; the audit log records what
   changed and when, not who.
-- **Synchronous assessment.** The request waits for both LLM calls (30–70 s). A job queue with
-  polling would be the next step for longer documents.
-- **Free-tier LLM.** Gemini's free tier can return 503 "high demand"; retries and a fallback model
-  reduce but don't eliminate failures. A failed run is saved with its error and can be re-run.
+- **No job queue.** The background run lives inside one serverless invocation (`waitUntil`, up to
+  300 s). That fits these document sizes; much longer documents would need a real queue/worker.
+- **Free-tier LLM.** Gemini's free tier can return 503 "high demand" or hang for minutes; timeouts,
+  retries and a fallback model reduce but don't eliminate failures. The fallback model is faster but
+  extracts somewhat less thoroughly. A failed run is saved with its error and can be re-run.
 - **Model judgement is advisory.** Coverage labels come from the model and can be wrong — that's
   why nothing counts towards completion until a human reviews it, and why citations are verified.
 - **Re-running creates a new assessment** rather than carrying reviews over; earlier assessments
