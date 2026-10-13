@@ -8,7 +8,7 @@ tested code — never by the model.
 > It is a completeness aid for a human reviewer. It does **not** make legal or funding-eligibility
 > decisions, and the UI and the exported summary both say so.
 
-**Live app:** _add Vercel URL here_ · **Demo:** click **Load sample review** → **Run assessment**.
+**Live app:** https://grant-assistant-delta.vercel.app · **Demo:** click **Load sample review** → **Run assessment**.
 
 ## What it does
 
