@@ -37,7 +37,8 @@ server/  Express 5 + TypeScript
   src/db/        Drizzle schema (Postgres)
   test/          Vitest unit tests
 api/index.ts     Vercel serverless entry (same Express app)
-samples/         demo guideline, draft application (with deliberate gaps), supporting docs
+samples/         demo guidelines, draft applications (with deliberate gaps) and supporting docs
+                 for three fictional funders/NGOs; samples/seed/ feeds `npm run db:seed`
 ```
 
 **AI workflow (two calls per assessment):**
@@ -75,6 +76,9 @@ npm run db:push               # create tables
 npm run dev:server            # API on :8787
 npm run dev:client            # UI on :5173 (proxies /api)
 ```
+
+To reset the database to the three demo reviews (this deletes every existing review and runs
+the real AI assessment on each): `npm run db:seed -- --confirm`.
 
 Set `AI_PROVIDER=mock` to run without an API key — a deterministic keyword heuristic stands in
 for the model (much weaker, but exercises the full pipeline and UI).

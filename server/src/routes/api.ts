@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import { and, desc, eq, max } from 'drizzle-orm';
+import { and, desc, eq, max, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, schema } from '../db/client';
 import { contentHash } from '../lib/hash';
@@ -9,6 +9,7 @@ import { waitUntil } from '@vercel/functions';
 import { startAssessment } from '../ai/pipeline';
 import { loadAssessmentView, loadVersionsByIds } from './assessmentView';
 import { sampleCase } from '../samples';
+import { logger } from '../logger';
 
 export const api = Router();
 
@@ -22,8 +23,24 @@ const MAX_DOC_CHARS = 60_000; // documented limit: keeps prompts within free-tie
 
 api.get('/health', (_req, res) => res.json({ ok: true }));
 
+// List view: each review with its latest assessment and how far the human review has got.
 api.get('/cases', wrap(async (_req, res) => {
-  res.json(await db.select().from(schema.cases).orderBy(desc(schema.cases.createdAt)));
+  const [cases, assessments, progress] = await Promise.all([
+    db.select().from(schema.cases).orderBy(desc(schema.cases.createdAt)),
+    db.select({ id: schema.assessments.id, caseId: schema.assessments.caseId, status: schema.assessments.status,
+      createdAt: schema.assessments.createdAt }).from(schema.assessments).orderBy(desc(schema.assessments.createdAt)),
+    db.select({
+      assessmentId: schema.mappings.assessmentId,
+      total: sql<number>`count(*)::int`,
+      reviewed: sql<number>`count(*) filter (where ${schema.mappings.reviewStatus} <> 'pending')::int`,
+    }).from(schema.mappings).groupBy(schema.mappings.assessmentId),
+  ]);
+  const progressById = new Map(progress.map((p) => [p.assessmentId, p]));
+  res.json(cases.map((c) => {
+    const latest = assessments.find((a) => a.caseId === c.id);
+    const p = latest ? progressById.get(latest.id) : undefined;
+    return { ...c, latestAssessment: latest ? { ...latest, total: p?.total ?? 0, reviewed: p?.reviewed ?? 0 } : null };
+  }));
 }));
 
 api.post('/cases', wrap(async (req, res) => {
@@ -61,6 +78,14 @@ api.get('/cases/:id', wrap(async (req, res) => {
     .map((k) => versions.find((v) => v.kind === k)?.id).filter((x): x is string => !!x);
   const latest = await loadVersionsByIds(latestIds);
   res.json({ case: kase, versions, latest, supporting, assessments });
+}));
+
+// Deleting a review removes its versions, assessments, reviews and history (FK cascades).
+api.delete('/cases/:id', wrap(async (req, res) => {
+  const [row] = await db.delete(schema.cases).where(eq(schema.cases.id, String(req.params.id))).returning();
+  if (!row) throw httpError(404, 'Review not found');
+  logger.info({ caseId: row.id }, 'case deleted');
+  res.status(204).end();
 }));
 
 api.get('/versions/:id', wrap(async (req, res) => {

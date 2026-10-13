@@ -1,0 +1,6 @@
+[
+  { "name": "Trust registration deed (2018)", "docType": "registration certificate", "description": "", "status": "provided" },
+  { "name": "Audited accounts FY2023-24 to FY2025-26", "docType": "audited financial statements", "description": "Three years", "status": "provided" },
+  { "name": "Gram Panchayat NOC - Hatti village", "docType": "Gram Panchayat NOC", "description": "Only 1 of 6 panchayats so far", "status": "provided" },
+  { "name": "Water test report - district lab", "docType": "water-quality test report", "description": "Covers 2 of 6 villages; lab accreditation not stated", "status": "requested" }
+]

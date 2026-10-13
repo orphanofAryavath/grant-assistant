@@ -285,3 +285,16 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--ring); 
   .doc-item .status-select { grid-column: 2 / 3; justify-self: start; }
   .add-doc-grid { grid-template-columns: 1fr; }
 }
+
+/* Review list */
+.case-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.case-item { display: flex; align-items: center; gap: .75rem; padding: .35rem .5rem .35rem .35rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; animation: fadeUp .25s ease both; }
+.case-item:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.case-link { flex: 1; min-width: 0; display: grid; gap: .3rem; padding: .55rem .65rem; border-radius: 9px; color: var(--text); }
+.case-link:hover { text-decoration: none; }
+.case-link:hover .case-name { color: var(--primary); }
+.case-name { font-weight: 600; transition: color .15s ease; overflow-wrap: anywhere; }
+.case-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.case-progress { display: inline-flex; align-items: center; gap: .5rem; }
+.progress-sm { width: 90px; height: 6px; }
+.confirm-row { display: inline-flex; align-items: center; gap: .4rem; padding-right: .3rem; animation: fadeUp .2s ease both; }

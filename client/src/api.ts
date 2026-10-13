@@ -5,6 +5,9 @@ export type DocKind = 'guideline' | 'application';
 export type SupportStatus = 'provided' | 'missing' | 'requested';
 
 export interface Case { id: string; name: string; createdAt: string }
+export interface CaseListItem extends Case {
+  latestAssessment: { id: string; status: 'running' | 'ready' | 'failed'; createdAt: string; total: number; reviewed: number } | null;
+}
 export interface VersionMeta { id: string; kind: DocKind; versionNo: number; title: string; contentHash: string; createdAt: string }
 export interface Version extends VersionMeta { content: string; caseId: string }
 export interface SupportingDoc { id: string; caseId: string; name: string; docType: string; description: string; status: SupportStatus }
@@ -56,7 +59,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const json = (method: string, data?: unknown): RequestInit => ({ method, body: data === undefined ? undefined : JSON.stringify(data) });
 
 export const api = {
-  listCases: () => request<Case[]>('/cases'),
+  listCases: () => request<CaseListItem[]>('/cases'),
+  deleteCase: (id: string) => request<void>(`/cases/${id}`, json('DELETE')),
   createCase: (name: string) => request<Case>('/cases', json('POST', { name })),
   createSampleCase: () => request<Case>('/cases/sample', json('POST')),
   getCase: (id: string) => request<CaseDetail>(`/cases/${id}`),
