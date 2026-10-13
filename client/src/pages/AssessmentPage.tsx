@@ -168,9 +168,26 @@ export default function AssessmentPage() {
       {a.status === 'ready' && (
         <>
           <section className="stats">
-            <div className="stat"><span className="stat-num">{c.mandatory.percent}%</span><span>Mandatory met<br /><span className="muted small">{c.mandatory.met}/{c.mandatory.total} · {c.mandatory.pending} awaiting review</span></span></div>
-            <div className="stat"><span className="stat-num">{c.recommended.percent}%</span><span>Recommendations met<br /><span className="muted small">{c.recommended.met}/{c.recommended.total} · {c.recommended.pending} awaiting review</span></span></div>
-            <div className="stat"><span className="stat-num">{c.mandatory.pending + c.recommended.pending}</span><span>Items to review<br /><span className="muted small">Only reviewed items count towards completion</span></span></div>
+            <div className="stat">
+              <span className="stat-label">Mandatory met</span>
+              <span className="stat-num">{c.mandatory.percent}%</span>
+              <div className="progress" aria-hidden="true"><span style={{ width: `${c.mandatory.percent}%` }} /></div>
+              <span className="muted small">{c.mandatory.met}/{c.mandatory.total} met · {c.mandatory.pending} awaiting review</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Recommendations met</span>
+              <span className="stat-num">{c.recommended.percent}%</span>
+              <div className="progress progress-alt" aria-hidden="true"><span style={{ width: `${c.recommended.percent}%` }} /></div>
+              <span className="muted small">{c.recommended.met}/{c.recommended.total} met · {c.recommended.pending} awaiting review</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Items to review</span>
+              <span className="stat-num">{c.mandatory.pending + c.recommended.pending}</span>
+              <div className="progress progress-muted" aria-hidden="true">
+                <span style={{ width: `${view.items.length ? ((view.items.length - c.mandatory.pending - c.recommended.pending) / view.items.length) * 100 : 0}%` }} />
+              </div>
+              <span className="muted small">Only reviewed items count towards completion</span>
+            </div>
           </section>
 
           <section className="card">
