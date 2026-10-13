@@ -229,3 +229,8 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--ring); 
 .doc-view { white-space: pre-wrap; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: .83rem; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--border); padding: 1rem; border-radius: 10px; margin: 0; }
 .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--surface); padding: .6rem 1.1rem; border-radius: 12px; font-size: .9rem; font-weight: 500; z-index: 20; box-shadow: var(--shadow-lg); animation: toastIn .3s cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Card header rows (title + action button): keep the button from touching the content below. */
+.card > .row.between:first-child { margin-bottom: 1rem; min-height: 38px; }
+.card > .row.between:first-child h2 { margin: 0; }
+.card > .row.between:first-child + p { margin-top: -.25rem; }
